@@ -100,7 +100,7 @@ for name in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 	infos = {}
 	space_time = np.zeros((total_duration, n, n))
 	a, b = [], []
-	for i, (displacement_index, other_dir) in enumerate(product(range(len(good_angles)), [-1, 1])):
+	for i, (displacement_index, sign) in enumerate(product(range(len(good_angles)), [-1, 1])):
 		circle_placed = False
 		attempts = 0
 		while not circle_placed:
@@ -111,8 +111,8 @@ for name in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 
 			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
 			displacement = good_angles[displacement_index]
-			displacement = displacement if np.random.rand() < 0.5 else - displacement
-			# other_dir = -1 if np.random.rand() < 0.5 else 1
+			displacement = sign * displacement
+			other_dir = -1 if np.random.rand() < 0.5 else 1
 			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
 
 			# break the down the total distance in need of covering
