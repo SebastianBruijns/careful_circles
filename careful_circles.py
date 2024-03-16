@@ -105,7 +105,7 @@ def compatible_trajectories(existing, new, size):
 	return True
 
 
-for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
+for name in ['i', 'j', 'k']:
 	start = time.time()
 
 	infos = {}
@@ -113,7 +113,7 @@ for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 	# maybe one padding is enough though?
 	space_time = np.zeros((total_duration, n, n))
 	existing = []
-	for i, (displacement_index, other_dir) in enumerate(product(range(len(good_angles)), [-1, 1])):
+	for i, (displacement_index, other_dir, sign) in enumerate(product(range(len(good_angles)), [-1, 1], [-1, 1])):
 		circle_placed = False
 		attempts = 0
 		while not circle_placed:
@@ -129,7 +129,7 @@ for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 
 			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
 			displacement = good_angles[displacement_index]
-			sign = 1 if np.random.rand() < 0.5 else -1
+			# sign = 1 if np.random.rand() < 0.5 else -1
 			displacement = sign * displacement
 			# other_dir = -1 if np.random.rand() < 0.5 else 1
 			dis_x, dis_y = (other_dir, displacement / n) if np.random.rand() < 0.5 else (displacement / n, other_dir)

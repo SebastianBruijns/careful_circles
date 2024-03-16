@@ -1,6 +1,6 @@
 import imageio
 
-for name in ['a']:
+for name in ['i', 'j', 'k']:
     images = []
     for t in range(500):
         images.append(imageio.imread("fits/{}_{}".format(name, t) + '.png'))
