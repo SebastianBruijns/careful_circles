@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import pickle
+from itertools import product
 # TODO: find positions to fill across time, not in time specifically...
 # TODO: Thanks, toriod wrapping :/... https://math.stackexchange.com/questions/2213165/find-shortest-distance-between-lines-in-3d
 
@@ -93,27 +94,25 @@ for i in range(401):
 
 total_duration = 320
 
-n_circles = 18
-
 for name in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 	start = time.time()
 
 	infos = {}
 	space_time = np.zeros((total_duration, n, n))
 	a, b = [], []
-	for i in range(n_circles):
+	for i, (displacement_index, other_dir) in enumerate(product(range(len(good_angles)), [-1, 1])):
 		circle_placed = False
 		attempts = 0
 		while not circle_placed:
 			attempts += 1
 			size = int(np.random.uniform(5, 20))
 			unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
-			displacement_index = np.random.choice(len(good_angles))
+			# displacement_index = np.random.choice(len(good_angles))
 
 			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
 			displacement = good_angles[displacement_index]
 			displacement = displacement if np.random.rand() < 0.5 else - displacement
-			other_dir = -1 if np.random.rand() < 0.5 else 1
+			# other_dir = -1 if np.random.rand() < 0.5 else 1
 			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
 
 			# break the down the total distance in need of covering
