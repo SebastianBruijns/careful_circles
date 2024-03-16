@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import time
+import pickle
 # TODO: find positions to fill across time, not in time specifically...
 # TODO: Thanks, toriod wrapping :/... https://math.stackexchange.com/questions/2213165/find-shortest-distance-between-lines-in-3d
 
@@ -92,49 +93,56 @@ for i in range(401):
 
 total_duration = 320
 
-n_circles = 5
+n_circles = 18
 
+for name in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
+	start = time.time()
 
-start = time.time()
+	infos = {}
+	space_time = np.zeros((total_duration, n, n))
+	a, b = [], []
+	for i in range(n_circles):
+		circle_placed = False
+		attempts = 0
+		while not circle_placed:
+			attempts += 1
+			size = int(np.random.uniform(5, 20))
+			unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
+			displacement_index = np.random.choice(len(good_angles))
 
+			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
+			displacement = good_angles[displacement_index]
+			displacement = displacement if np.random.rand() < 0.5 else - displacement
+			other_dir = -1 if np.random.rand() < 0.5 else 1
+			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
 
-space_time = np.zeros((total_duration, n, n))
-a, b = [], []
-for i in range(n_circles):
-	circle_placed = False
-	attempts = 0
-	while not circle_placed:
-		attempts += 1
-		size = int(np.random.uniform(5, 20))
-		unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
-		displacement_index = np.random.choice(len(good_angles))
+			# break the down the total distance in need of covering
+			normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
 
-		# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
-		displacement = good_angles[displacement_index]
-		displacement = displacement if np.random.rand() < 0.5 else - displacement
-		dis_x, dis_y = (1, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, 1)
+			# adapt the displacement to what we need to cover
+			dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+			dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
 
-		# break the down the total distance in need of covering
-		normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
+			x, y = np.random.choice(n), np.random.choice(n)
 
-		# adapt the displacement to what we need to cover
-		dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
-		dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+			new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
+			circle_placed = not ((space_time + new_trajectory) > 1).any()
+			if circle_placed:
+				space_time += new_trajectory
+				print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
+				infos['x'] = x
+				infos['y'] = y
+				infos['size'] = size
+				infos['dis_x_prime'] = dis_x_prime
+				infos['dis_y_prime'] = dis_y_prime
+			if attempts > 1200:
+				print("Gave up after {} attempts".format(attempts))
+				break
 
-		x, y = np.random.choice(n), np.random.choice(n)
+	print(time.time() - start)
+	pickle.dump(infos, open("fits/" + name + "_infos", 'wb'))
 
-		new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
-		circle_placed = not ((space_time + new_trajectory) > 1).any()
-		if circle_placed:
-			space_time += new_trajectory
-			print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
-		if attempts > 1200:
-			print("Gave up after {} attempts".format(attempts))
-			break
-
-print(time.time() - start)
-
-for t in range(total_duration):
-	plt.imshow(space_time[t])
-	plt.savefig("t_{}".format(t))
-	plt.close()
+	for t in range(total_duration):
+		plt.imshow(space_time[t])
+		plt.savefig("fits/" + name + "_{}".format(t))
+		plt.close()
