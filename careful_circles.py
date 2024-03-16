@@ -53,21 +53,21 @@ def fill_circle(array, t, x, y, size):
 	array[t, points[:, 0] % n, points[:, 1] % n] = 1
 
 @profile
-def compute_new_trajectory_fast(x, y, size, dis_x, dis_y, normalized_speed):
+def compute_new_trajectory_fast(x, y, size, dis_x, dis_y):
 	local_spacetime = np.zeros((total_duration, n, n))
 	xs, ys = np.meshgrid(np.arange(-size, size + 1), np.arange(-size, size + 1))
 	circle = xs ** 2 + ys ** 2 <= size ** 2
 	xs, ys = xs[circle], ys[circle]
 	time = np.arange(total_duration)
-	local_spacetime[time[:, None], (dis_x * normalized_speed * time[:, None] + xs + x).astype(int) % n, (dis_y * normalized_speed * time[:, None] + ys + y).astype(int) % n] = 1
+	local_spacetime[time[:, None], (dis_x * time[:, None] + xs + x).astype(int) % n, (dis_y * time[:, None] + ys + y).astype(int) % n] = 1
 	return local_spacetime
 
-def compute_new_trajectory(x, y, size, dis_x, dis_y, normalized_speed):
+def compute_new_trajectory(x, y, size, dis_x, dis_y):
 	local_spacetime = np.zeros((total_duration, n, n))
 	fill_circle(local_spacetime, 0, x, y, size)
 	for t in range(1, total_duration):
-		x += dis_x * normalized_speed
-		y += dis_y * normalized_speed
+		x += dis_x
+		y += dis_y
 		fill_circle(local_spacetime, t, int(x), int(y), size)
 	return local_spacetime
 
@@ -90,7 +90,7 @@ for i in range(401):
 # plt.ylim(0, 3000)
 # plt.show()
 
-total_duration = 250
+total_duration = 320
 
 n_circles = 5
 
@@ -99,6 +99,7 @@ start = time.time()
 
 
 space_time = np.zeros((total_duration, n, n))
+a, b = [], []
 for i in range(n_circles):
 	circle_placed = False
 	attempts = 0
@@ -108,23 +109,32 @@ for i in range(n_circles):
 		unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
 		displacement_index = np.random.choice(len(good_angles))
 
+		# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
 		displacement = good_angles[displacement_index]
 		displacement = displacement if np.random.rand() < 0.5 else - displacement
 		dis_x, dis_y = (1, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, 1)
 
+		# break the down the total distance in need of covering
 		normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
+
+		# adapt the displacement to what we need to cover
+		dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+		dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
 
 		x, y = np.random.choice(n), np.random.choice(n)
 
-		new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x, dis_y, normalized_speed)
+		new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
 		circle_placed = not ((space_time + new_trajectory) > 1).any()
 		if circle_placed:
 			space_time += new_trajectory
 			print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
+		if attempts > 1200:
+			print("Gave up after {} attempts".format(attempts))
+			break
 
 print(time.time() - start)
 
 for t in range(total_duration):
 	plt.imshow(space_time[t])
 	plt.savefig("t_{}".format(t))
-	plt.show()
+	plt.close()
