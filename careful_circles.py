@@ -26,8 +26,8 @@ def compute_traversal_dist(angle):
 			break
 	return total
 
-def profile(x):
-	return x
+#def profile(x):
+#	return x
 
 @profile
 def generate_circle_points(x, y, size):
@@ -94,54 +94,68 @@ for i in range(401):
 
 total_duration = 320
 
-for name in ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
-	start = time.time()
+def compatible_trajectories(existing, new, size):
+	for e, s in existing:
+		min_dist = np.sum((e - new) ** 2, axis=0).min()
+		if min_dist < s + size:
+			return False
+	return True
 
-	infos = {}
-	space_time = np.zeros((total_duration, n, n))
-	a, b = [], []
-	for i, (displacement_index, sign) in enumerate(product(range(len(good_angles)), [-1, 1])):
-		circle_placed = False
-		attempts = 0
-		while not circle_placed:
-			attempts += 1
-			size = int(np.random.uniform(5, 20))
-			unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
-			# displacement_index = np.random.choice(len(good_angles))
+@profile
+def main():
+	for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
+		start = time.time()
 
-			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
-			displacement = good_angles[displacement_index]
-			displacement = sign * displacement
-			other_dir = -1 if np.random.rand() < 0.5 else 1
-			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
+		infos = {}
+		space_time = np.zeros((total_duration, n, n))
+		existing = []
+		for i, (displacement_index, sign) in enumerate(product(range(len(good_angles)), [-1, 1])):
+			circle_placed = False
+			attempts = 0
+			while not circle_placed:
+				attempts += 1
+				size = int(np.random.uniform(5, 20))
+				unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
+				# displacement_index = np.random.choice(len(good_angles))
 
-			# break the down the total distance in need of covering
-			normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
+				# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
+				displacement = good_angles[displacement_index]
+				displacement = sign * displacement
+				other_dir = -1 if np.random.rand() < 0.5 else 1
+				dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
 
-			# adapt the displacement to what we need to cover
-			dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
-			dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+				# break the down the total distance in need of covering
+				normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
 
-			x, y = np.random.choice(n), np.random.choice(n)
+				# adapt the displacement to what we need to cover
+				dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+				dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
 
-			new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
-			circle_placed = not ((space_time + new_trajectory) > 1).any()
-			if circle_placed:
-				space_time += new_trajectory
-				print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
-				infos['x'] = x
-				infos['y'] = y
-				infos['size'] = size
-				infos['dis_x_prime'] = dis_x_prime
-				infos['dis_y_prime'] = dis_y_prime
-			if attempts > 1200:
-				print("Gave up after {} attempts".format(attempts))
-				break
+				x, y = np.random.choice(n), np.random.choice(n)
 
-	print(time.time() - start)
-	pickle.dump(infos, open("fits/" + name + "_infos", 'wb'))
+				trajectory = np.vstack([(dis_x * np.arange(total_duration) + x).astype(int) % n, (dis_y * np.arange(total_duration) + y).astype(int) % n])
+				if compatible_trajectories(existing, trajectory, size):
+					existing.append([trajectory, size])
 
-	for t in range(total_duration):
-		plt.imshow(space_time[t])
-		plt.savefig("fits/" + name + "_{}".format(t))
-		plt.close()
+					new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
+					space_time += new_trajectory
+					print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
+					infos['x'] = x
+					infos['y'] = y
+					infos['size'] = size
+					infos['dis_x_prime'] = dis_x_prime
+					infos['dis_y_prime'] = dis_y_prime
+					break
+				if attempts > 20:
+					print("Gave up after {} attempts".format(attempts))
+					break
+
+		print(time.time() - start)
+
+		pickle.dump(infos, open("fits/" + name + "_infos", 'wb'))
+
+		for t in range(total_duration):
+			plt.imshow(space_time[t])
+			plt.savefig("fits/" + name + "_{}".format(t))
+			plt.close()
+main()
