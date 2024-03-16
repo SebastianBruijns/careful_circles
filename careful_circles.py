@@ -7,6 +7,10 @@ from itertools import product
 # TODO: Thanks, toriod wrapping :/... https://math.stackexchange.com/questions/2213165/find-shortest-distance-between-lines-in-3d
 
 n = 400
+total_duration = 500
+circle_min, circle_max = 5, 20
+n = n + 2 * circle_max
+
 np.random.seed(4)
 
 def simple_dist(start, end):
@@ -82,7 +86,7 @@ print(simple_dist((0, 0), (400, 200)) + simple_dist((0, 200), (400, 400)))
 
 dists = []
 good_angles, good_dists = [], []
-for i in range(401):
+for i in range(n + 1):
 	dists.append(compute_traversal_dist(i))
 	if dists[-1] < 3000:
 		good_angles.append(i)
@@ -91,10 +95,6 @@ for i in range(401):
 # plt.plot(dists)
 # plt.ylim(0, 3000)
 # plt.show()
-
-total_duration = 450
-circle_min, circle_max = 5, 20
-n = n + 2 * circle_max
 
 def compatible_trajectories(existing, new, size):
 	for e, s in existing:
@@ -118,9 +118,9 @@ for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 		attempts = 0
 		while not circle_placed:
 			attempts += 1
-			if attempts % 20000 == 0:
+			if attempts % 30000 == 0:
 				print("Attempt #{}".format(attempts))
-				if attempts > 100000:
+				if attempts > 300000:
 					print("Giving up after {} attempts".format(attempts))
 					break
 			size = int(np.random.uniform(circle_min, circle_max))
@@ -132,7 +132,7 @@ for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
 			sign = 1 if np.random.rand() < 0.5 else -1
 			displacement = sign * displacement
 			# other_dir = -1 if np.random.rand() < 0.5 else 1
-			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
+			dis_x, dis_y = (other_dir, displacement / n) if np.random.rand() < 0.5 else (displacement / n, other_dir)
 
 			# break the down the total distance in need of covering
 			normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
