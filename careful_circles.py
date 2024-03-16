@@ -26,8 +26,8 @@ def compute_traversal_dist(angle):
 			break
 	return total
 
-#def profile(x):
-#	return x
+def profile(x):
+	return x
 
 @profile
 def generate_circle_points(x, y, size):
@@ -92,70 +92,78 @@ for i in range(401):
 # plt.ylim(0, 3000)
 # plt.show()
 
-total_duration = 320
+total_duration = 450
+circle_min, circle_max = 5, 20
+n = n + 2 * circle_max
 
 def compatible_trajectories(existing, new, size):
 	for e, s in existing:
 		min_dist = np.sum((e - new) ** 2, axis=0).min()
-		if min_dist < s + size:
+		# pad a little bit for safety
+		if min_dist < (1.01 * (s + size)) ** 2:
 			return False
 	return True
 
-@profile
-def main():
-	for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
-		start = time.time()
 
-		infos = {}
-		space_time = np.zeros((total_duration, n, n))
-		existing = []
-		for i, (displacement_index, sign) in enumerate(product(range(len(good_angles)), [-1, 1])):
-			circle_placed = False
-			attempts = 0
-			while not circle_placed:
-				attempts += 1
-				size = int(np.random.uniform(5, 20))
-				unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
-				# displacement_index = np.random.choice(len(good_angles))
+for name in ['a']: # , 'b', 'c', 'd', 'e', 'f', 'g', 'h']:
+	start = time.time()
 
-				# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
-				displacement = good_angles[displacement_index]
-				displacement = sign * displacement
-				other_dir = -1 if np.random.rand() < 0.5 else 1
-				dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
-
-				# break the down the total distance in need of covering
-				normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
-
-				# adapt the displacement to what we need to cover
-				dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
-				dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
-
-				x, y = np.random.choice(n), np.random.choice(n)
-
-				trajectory = np.vstack([(dis_x * np.arange(total_duration) + x).astype(int) % n, (dis_y * np.arange(total_duration) + y).astype(int) % n])
-				if compatible_trajectories(existing, trajectory, size):
-					existing.append([trajectory, size])
-
-					new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
-					space_time += new_trajectory
-					print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
-					infos['x'] = x
-					infos['y'] = y
-					infos['size'] = size
-					infos['dis_x_prime'] = dis_x_prime
-					infos['dis_y_prime'] = dis_y_prime
+	infos = {}
+	# we pad with the circle_max, otherwise the trajectories can crash at the borders, when the centre has not yet moved over
+	# maybe one padding is enough though?
+	space_time = np.zeros((total_duration, n, n))
+	existing = []
+	for i, (displacement_index, other_dir) in enumerate(product(range(len(good_angles)), [-1, 1])):
+		circle_placed = False
+		attempts = 0
+		while not circle_placed:
+			attempts += 1
+			if attempts % 20000 == 0:
+				print("Attempt #{}".format(attempts))
+				if attempts > 100000:
+					print("Giving up after {} attempts".format(attempts))
 					break
-				if attempts > 20:
-					print("Gave up after {} attempts".format(attempts))
-					break
+			size = int(np.random.uniform(circle_min, circle_max))
+			unnormalized_speed = np.random.choice(3, p=[0.25, 0.5, 0.25]) + 1
+			# displacement_index = np.random.choice(len(good_angles))
 
-		print(time.time() - start)
+			# pick an angle (we treat angles as the amount of displacement along one axis while the other displaces by 1)
+			displacement = good_angles[displacement_index]
+			sign = 1 if np.random.rand() < 0.5 else -1
+			displacement = sign * displacement
+			# other_dir = -1 if np.random.rand() < 0.5 else 1
+			dis_x, dis_y = (other_dir, displacement / 400) if np.random.rand() < 0.5 else (displacement / 400, other_dir)
 
-		pickle.dump(infos, open("fits/" + name + "_infos", 'wb'))
+			# break the down the total distance in need of covering
+			normalized_speed = good_dists[displacement_index] / total_duration * unnormalized_speed
 
-		for t in range(total_duration):
-			plt.imshow(space_time[t])
-			plt.savefig("fits/" + name + "_{}".format(t))
-			plt.close()
-main()
+			# adapt the displacement to what we need to cover
+			dis_x_prime = dis_x / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+			dis_y_prime = dis_y / np.sqrt(dis_x ** 2 + dis_y ** 2) * normalized_speed
+
+			x, y = np.random.choice(n), np.random.choice(n)
+
+			trajectory = np.vstack([(dis_x_prime * np.arange(total_duration) + x).astype(int) % n, (dis_y_prime * np.arange(total_duration) + y).astype(int) % n])
+			if compatible_trajectories(existing, trajectory, size):
+				new_trajectory = compute_new_trajectory_fast(x, y, size, dis_x_prime, dis_y_prime)
+				space_time += new_trajectory
+				print("Placed circle {} (with {} attempts)".format(i + 1, attempts))
+				existing.append([trajectory, size])
+				infos['x'] = x
+				infos['y'] = y
+				infos['size'] = size
+				infos['dis_x_prime'] = dis_x_prime
+				infos['dis_y_prime'] = dis_y_prime
+				break
+
+	if (space_time[:, circle_max:-circle_max, circle_max:-circle_max] > 1).any():
+		print("Big problem")
+		quit()
+	print(time.time() - start)
+
+	pickle.dump(infos, open("fits/" + name + "_infos", 'wb'))
+
+	for t in range(total_duration):
+		plt.imshow(space_time[t, circle_max:-circle_max, circle_max:-circle_max])
+		plt.savefig("fits/" + name + "_{}".format(t))
+		plt.close()
